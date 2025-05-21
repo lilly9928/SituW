@@ -1,0 +1,4 @@
+Context: [[CONTEXT]]
+Question: Based on the given context, determine if the following conclusion is true:
+Conclusion: [[CONCLUSION]]
+Directly output <True/False>: 
