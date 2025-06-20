@@ -1,2 +1,0 @@
-[[response]]
-The conclusion: [[question]] is <True/False>:
