@@ -11,7 +11,7 @@ Minimal guide to run **Chain-of-Thought (CoT)** NLI experiments on **LogiQA2.0 â
 * Install dependencies:
 
 ```bash
-pip install -r requirements.txt || pip install openai tqdm pandas numpy python-dotenv
+pip install openai tqdm pandas numpy python-dotenv
 ```
 
 ## 2) Data & API key
