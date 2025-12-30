@@ -30,6 +30,9 @@ def parse_args():
 
     # ✅ 배치 크기 추가 (큰 데이터셋은 8~32 정도로 조정)
     parser.add_argument('--batch_size', type=int, default=8)
+    
+    # chain-of-thought 옵션
+    parser.add_argument('--cot', type=str, default='none')
 
     # generation options
     parser.add_argument('--do_sample', action='store_true')
@@ -44,9 +47,15 @@ class HG_Model:
         self.args = args
         self.data_path = args.data_path
         self.model_name = args.model_name
-        self.save_path = args.save_path
+        # self.save_path = args.save_path
         self.mode = args.mode
         self.model_path = ''
+        self.cot = args.cot
+
+        if self.cot == 'cot':
+            self.save_path = os.path.join(args.save_path, "zero_shot_cot")
+        else:
+            self.save_path = os.path.join(args.save_path, "zero_shot")
 
         # -------------------------
         # model registry
@@ -87,7 +96,8 @@ class HG_Model:
             self.model_path,
             cache_dir='/data3/hg_weight/hg_weight'
         )
-
+        self.tokenizer.padding_side = "left"
+        
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
             cache_dir="/data3/hg_weight/hg_weight",
@@ -96,7 +106,7 @@ class HG_Model:
         )
 
         self.model.eval()
-
+        
         # pad token safety
         if self.tokenizer.pad_token is None and self.tokenizer.eos_token is not None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -184,15 +194,26 @@ class HG_Model:
             )
             options = ["A) True", "B) False", "C) Uncertain"]
 
-            user_content = (
-                f'context: "{context}"\n'
-                f'question: "{question}"\n'
-                f'options:\n'
-                f'- {options[0]}\n'
-                f'- {options[1]}\n'
-                f'- {options[2]}\n\n'
-                "Answer with only one letter among A, B, C."
-            )
+            if self.cot == "cot":
+                user_content = (
+                    f'context: "{context}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n'
+                    f'- {options[0]}\n'
+                    f'- {options[1]}\n'
+                    f'- {options[2]}\n\n'
+                    "Let's think step by step:"
+                )
+            else:                
+                user_content = (
+                    f'context: "{context}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n'
+                    f'- {options[0]}\n'
+                    f'- {options[1]}\n'
+                    f'- {options[2]}\n\n'
+                    "Answer with only one letter among A, B, C."
+                )
 
         elif self.mode == "prontoqa_val":
             context = str(item.get("context", "")).strip()
@@ -206,12 +227,20 @@ class HG_Model:
             else:
                 options_lines = ["- A) True", "- B) False"]
 
-            user_content = (
-                f'context: "{context}"\n'
-                f'question: "{question}"\n'
-                f'options:\n' + "\n".join(options_lines) + "\n\n"
-                "Answer with only one letter among A, B."
-            )
+            if self.cot == "cot":
+                user_content = (
+                    f'context: "{context}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n' + "\n".join(options_lines) + "\n\n"
+                    "Let's think step by step:"
+                )
+            else:
+                user_content = (
+                    f'context: "{context}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n' + "\n".join(options_lines) + "\n\n"
+                    "Answer with only one letter among A, B."
+                )
 
         elif self.mode == "proofwriter_val":
             theory = str(item.get("theory", "")).strip()
@@ -221,6 +250,9 @@ class HG_Model:
             question = f"Based on the above theory, is the following statement true, false, or unknown? {q}"
             options = ["A) True", "B) False", "C) Unknown"]
 
+            if self.cot == "cot":
+                question += " Let's think step by step."
+                
             user_content = (
                 f'context: "{context}"\n'
                 f'question: "{question}"\n'
@@ -238,6 +270,9 @@ class HG_Model:
             question = "Does the premise entail the hypothesis?"
             options = ["A) entailment", "B) not-entailment"]
 
+            if self.cot == "cot":
+                question += " Let's think step by step."
+                
             user_content = (
                 f'premise: "{premise}"\n'
                 f'hypothesis: "{hypothesis}"\n'
@@ -419,7 +454,11 @@ class HG_Model:
                 correct_cnt += int(r["correct"])
 
         os.makedirs(self.save_path, exist_ok=True)
-        out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_result.json")
+        
+        if self.cot == "cot":
+            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_cot_result.json")
+        else:
+            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_result.json")
 
         acc = (correct_cnt / total_cnt) * 100.0 if total_cnt > 0 else 0.0
 
