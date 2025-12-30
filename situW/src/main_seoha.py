@@ -254,7 +254,6 @@ class HG_Model:
             options = ["A) True", "B) False", "C) Unknown"]
 
             if self.cot == "cot":
-                question += " Let's think step by step."
                 user_content = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
@@ -262,7 +261,7 @@ class HG_Model:
                     f'- {options[0]}\n'
                     f'- {options[1]}\n'
                     f'- {options[2]}\n\n'
-                    "Let's think step by step."
+                    "Let's think step by step:"
                 )
             else:
                 user_content = (
@@ -283,7 +282,6 @@ class HG_Model:
             options = ["A) entailment", "B) not-entailment"]
 
             if self.cot == "cot":
-                question += " Let's think step by step."
                 user_content = (
                     f'premise: "{premise}"\n'
                     f'hypothesis: "{hypothesis}"\n'
@@ -291,7 +289,7 @@ class HG_Model:
                     f'options:\n'
                     f'- {options[0]}\n'
                     f'- {options[1]}\n\n'
-                    "Let's think step by step."
+                    "Let's think step by step:"
                 )
             else:
                 user_content = (
@@ -319,15 +317,23 @@ class HG_Model:
     def parse_choice(self, text):
         if text is None:
             return None
+
         t = text.strip()
+        tail = t[-200:]  # ✅ 끝부분 위주로 파싱 (프롬프트 에코 방지)
 
         # prontoqa/logiqa -> A/B
         if self.mode in ["prontoqa_val", "logiqa_val"]:
-            m = re.search(r"\b([AB])\b", t, flags=re.IGNORECASE)
+            # 1) "B) False" 같은 형태 우선
+            m = re.search(r"([AB])\s*\)", tail, flags=re.IGNORECASE)
             if m:
                 return m.group(1).upper()
 
-            tl = t.lower()
+            # 2) 끝부분에서 단독 A/B 찾기 (여러 개면 마지막)
+            ms = re.findall(r"\b([AB])\b", tail, flags=re.IGNORECASE)
+            if ms:
+                return ms[-1].upper()
+
+            tl = tail.lower()
 
             if self.mode == "prontoqa_val":
                 if "true" in tl:
@@ -336,7 +342,7 @@ class HG_Model:
                     return "B"
                 return None
 
-            # logiqa_val fallback (⚠️ not-entailment 먼저)
+            # logiqa fallback
             if "not-entailment" in tl or "not entailment" in tl or "non-entailment" in tl:
                 return "B"
             if "entailment" in tl or "entailed" in tl or "entails" in tl:
@@ -344,11 +350,17 @@ class HG_Model:
             return None
 
         # folio/proofwriter -> A/B/C
-        m = re.search(r"\b([ABC])\b", t, flags=re.IGNORECASE)
+        # 1) "B) False" / "C) Unknown" 같은 형태 우선
+        m = re.search(r"([ABC])\s*\)", tail, flags=re.IGNORECASE)
         if m:
             return m.group(1).upper()
 
-        tl = t.lower()
+        # 2) 끝부분에서 단독 A/B/C 찾기 (여러 개면 마지막)
+        ms = re.findall(r"\b([ABC])\b", tail, flags=re.IGNORECASE)
+        if ms:
+            return ms[-1].upper()
+
+        tl = tail.lower()
         if "true" in tl:
             return "A"
         if "false" in tl:
@@ -356,6 +368,7 @@ class HG_Model:
         if "uncertain" in tl or "unknown" in tl:
             return "C"
         return None
+
 
     # -------------------------
     # prompt -> string
@@ -416,7 +429,7 @@ class HG_Model:
             truncation=True
         ).to(self.model.device)
 
-        input_lens = inputs["attention_mask"].sum(dim=1).tolist()
+        input_len = inputs["input_ids"].shape[1]
 
         outputs = self.model.generate(
             **inputs,
@@ -429,7 +442,7 @@ class HG_Model:
 
         results = []
         for i in range(len(batch_items)):
-            gen_ids = outputs[i][input_lens[i]:]
+            gen_ids = outputs[i][input_len:]
             gen_text = self.tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
             pred = self.parse_choice(gen_text)
             gt = gt_choices[i]
