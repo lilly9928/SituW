@@ -1,0 +1,5 @@
+Context:
+[[READING]]
+Question: Based on the given context, determine if the following conclusion is true:
+Conclusion: [[QUESTION]]
+Let's think step by step:

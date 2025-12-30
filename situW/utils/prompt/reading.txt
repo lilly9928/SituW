@@ -1,0 +1,100 @@
+Task Description: Given a logical statement problem, analyze and structure it step by step. For each statement, extract:
+1) Time: Reference to a specific time (if any), otherwise ['none'].
+2) Space: Reference to a location (if any), otherwise ['none'].
+3) Causality: Logical dependencies from previous statements.
+4) Intention: If there is a goal or purpose in the statement, specify it; otherwise, ['none'].
+5) Protagonist: The main entities involved.
+------
+Here is an example:
+Problem:
+Each jompus is fruity. Every jompus is a wumpus. Every wumpus is not transparent. Wumpuses are tumpuses. Tumpuses are mean. Tumpuses are vumpuses. Every vumpus is cold. Each vumpus is a yumpus. Yumpuses are orange. Yumpuses are numpuses. Numpuses are dull. Each numpus is a dumpus. Every dumpus is not shy. Impuses are shy. Dumpuses are rompuses. Each rompus is liquid. Rompuses are zumpuses. Alex is a tumpus.
+
+
+Reading:
+Let's read step by step. 
+Each jompus is fruity. {time: ['none'], space:['none'], causality: ['jompus is fruity'], intention:['none'], protagonist: ['jompus']}
+
+Every jompus is a wumpus. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus' ], intention:['none'], protagonist: ['jompus']}
+
+Every wumpus is not transparent. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent' ], intention:['none'], protagonist: ['jompus','wumpus']}
+
+Wumpuses are tumpuses.  {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses'], intention:['none'], protagonist: ['jompus','wumpus']}
+
+Tumpuses are mean. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses']}
+
+Tumpuses are vumpuses. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses']}
+
+Every vumpus is cold.  {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses']}
+
+Each vumpus is a yumpus. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses']}
+
+Yumpuses are orange. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses']}
+
+Yumpuses are numpuses. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses']}
+
+Numpuses are dull. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses']}
+
+Each numpus is a dumpus. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses']}
+
+Every dumpus is not shy.  {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus','dumpus is not shy' ], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses','dumpus']}
+
+Impuses are shy.  {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus','dumpus is not shy','impuses are shy'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses','dumpus','impuses']}
+
+Dumpuses are rompuses. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus','dumpus is not shy','impuses are shy', 'dumpuses are rompuses'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses','dumpus','impuses']}
+
+Each rompus is liquid. {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus','dumpus is not shy','impuses are shy', 'dumpuses are rompuses','rumpus is liquid'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses','dumpus','impuses','rumpus']}
+
+Rompuses are zumpuses.  {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus','dumpus is not shy','impuses are shy', 'dumpuses are rompuses','rumpus is liquid','rumpuses are zumpuses'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses','dumpus','impuses','rumpus']}
+
+Alex is a tumpus.  {time: ['none'], space:['none'], causality: ['jompus is fruity', 'jompus is a wumpus','wumpus is not transparent', wumpuses are tumpuses','tumpuses are mean','tumpuses are vumpuses', 'vumpuses is cold', 'vumpus is a yumpus', 'yumpuses are orange.', 'yumpuses are numpuses','numpuses are dull','numpus is dumpus','dumpus is not shy','impuses are shy', 'dumpuses are rompuses','rumpus is liquid','rumpuses are zumpuses','alex is tumpus'], intention:['none'], protagonist: ['jompus','wumpus','tumpuses','vumpuses','yumpuses','numpuses','dumpus','impuses','rumpus','alex']}
+
+
+------
+Here is an example:
+Problem:
+Jompuses are not shy. Jompuses are yumpuses. Each yumpus is aggressive.Each yumpus is a dumpus. Dumpuses are not wooden. Dumpuses are wumpuses. Wumpuses are red. Every wumpus is an impus. Each impus is opaque.Impuses are tumpuses. Numpuses are sour. Tumpuses are not sour. Tumpuses are vumpuses. Vumpuses are earthy. Every vumpus is a zumpus. Zumpuses are small. Zumpuses are rompuses. Max is a yumpus.
+
+Reading:
+Let's read step by step. 
+Jompuses are not shy. {time: ['none'], space:['none'], causality: ['jompus are not shy'], intention:['none'], protagonist: ['jompus']}
+
+Jompuses are yumpuses. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses'], intention:['none'], protagonist: ['jompus']}
+
+Each yumpus is aggressive. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive'], intention:['none'], protagonist: ['jompus','yumpus']}
+
+Each yumpus is a dumpus. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus'], intention:['none'], protagonist: ['jompus','yumpus']}
+
+Dumpuses are not wooden. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden'], intention:['none'], protagonist: ['jompus','yumpus','dumpus']}
+
+Dumpuses are wumpuses.  {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus']}
+
+Wumpuses are red. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus']}
+
+Every wumpus is an impus. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus']}
+
+Each impus is opaque. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus']}
+
+Impuses are tumpuses. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus']}
+
+Numpuses are sour. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus']}
+
+Tumpuses are not sour. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus']}
+
+Tumpuses are vumpuses. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour','tumpuses are vumpuses' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus']}
+
+Vumpuses are earthy. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour','tumpuses are vumpuses','vumpuses are earthy' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus','vumpus']}
+
+Every vumpus is a zumpus. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour','tumpuses are vumpuses','vumpuses are earthy','vumpus is a zumpus' ], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus','vumpus']}
+
+Zumpuses are small. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour','tumpuses are vumpuses','vumpuses are earthy','vumpus is a zumpus', 'zumpuses are small'], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus','vumpus','zumpus']}
+
+Zumpuses are rompuses. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour','tumpuses are vumpuses','vumpuses are earthy','vumpus is a zumpus', 'zumpuses are small','zumpuses are rompuses'], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus','vumpus','zumpus']}
+
+Max is a yumpus. {time: ['none'], space:['none'], causality: ['jompus are not shy', 'jompus are yumpuses','yumpus is aggressive','yumpus is a dumpus','dumpuses are not wooden','dumpuses are wumpuses','wumpuses are red','wumpus is an impus','impus is opaque','impuses are tumpuses','numpuses are sour','tumpuses are not sour','tumpuses are vumpuses','vumpuses are earthy','vumpus is a zumpus', 'zumpuses are small','zumpuses are rompuses','max is yumpus'], intention:['none'], protagonist: ['jompus','yumpus','dumpus','wumpus','impus','numpus','tumpus','vumpus','zumpus',' max']}
+
+-----
+Below is the one you need to extract:
+Problem:
+[[CONTEXT]]
+----
+Reading:

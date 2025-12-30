@@ -1,0 +1,285 @@
+[
+  {
+    "question_id": 1,
+    "prediction": [
+      "b",
+      "c"
+    ],
+    "ground_truth": [
+      "b",
+      "c"
+    ],
+    "correct": true,
+    "raw_output": "The confusable pair is (b) and (c)."
+  },
+  {
+    "question_id": 2,
+    "prediction": [
+      "a",
+      "b",
+      "b"
+    ],
+    "ground_truth": [
+      "a",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "Which one is the confusable pair?\n(a) and (b)\n(b"
+  },
+  {
+    "question_id": 3,
+    "prediction": [],
+    "ground_truth": [
+      "a",
+      "b"
+    ],
+    "correct": false,
+    "raw_output": "Which one is the confusable pair?\n\n## Step 1: Understanding what"
+  },
+  {
+    "question_id": 4,
+    "prediction": [],
+    "ground_truth": [
+      "a",
+      "c"
+    ],
+    "correct": false,
+    "raw_output": "Step 1: Identify the key elements in each sentence: subject (leader"
+  },
+  {
+    "question_id": 5,
+    "prediction": [
+      "a"
+    ],
+    "ground_truth": [
+      "b",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "Which one is the confusable pair?\n(a) bumped into - given\n"
+  },
+  {
+    "question_id": 6,
+    "prediction": [
+      "a",
+      "d"
+    ],
+    "ground_truth": [
+      "a",
+      "d"
+    ],
+    "correct": true,
+    "raw_output": " Grammatically, (a) and (d) are both correct."
+  },
+  {
+    "question_id": 7,
+    "prediction": [
+      "a",
+      "a"
+    ],
+    "ground_truth": [
+      "b",
+      "c"
+    ],
+    "correct": false,
+    "raw_output": " \nIn (a), 'in the jeweller's' is a pre"
+  },
+  {
+    "question_id": 8,
+    "prediction": [],
+    "ground_truth": [
+      "a",
+      "b"
+    ],
+    "correct": false,
+    "raw_output": "Choose the confusable pair from the options above.\n\n## Step 1:"
+  },
+  {
+    "question_id": 9,
+    "prediction": [
+      "a"
+    ],
+    "ground_truth": [
+      "a",
+      "c"
+    ],
+    "correct": false,
+    "raw_output": "First, we need to identify the confusable pair among the options. A"
+  },
+  {
+    "question_id": 10,
+    "prediction": [
+      "a",
+      "b"
+    ],
+    "ground_truth": [
+      "c",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "The confusable pair is (a) and (b)."
+  },
+  {
+    "question_id": 11,
+    "prediction": [],
+    "ground_truth": [
+      "b",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "Step 1: Identify the key elements in each sentence.\n- Sentence ("
+  },
+  {
+    "question_id": 12,
+    "prediction": [
+      "a",
+      "b"
+    ],
+    "ground_truth": [
+      "a",
+      "b"
+    ],
+    "correct": true,
+    "raw_output": "The confusable pair is (a) and (b)."
+  },
+  {
+    "question_id": 13,
+    "prediction": [
+      "a",
+      "c"
+    ],
+    "ground_truth": [
+      "a",
+      "c"
+    ],
+    "correct": true,
+    "raw_output": "The confusable pair is (a) and (c)."
+  },
+  {
+    "question_id": 14,
+    "prediction": [
+      "a",
+      "d"
+    ],
+    "ground_truth": [
+      "b",
+      "c"
+    ],
+    "correct": false,
+    "raw_output": " \nThe confusable pair is (a) and (d)."
+  },
+  {
+    "question_id": 15,
+    "prediction": [
+      "b",
+      "d"
+    ],
+    "ground_truth": [
+      "b",
+      "d"
+    ],
+    "correct": true,
+    "raw_output": "The confusable pair is (b) and (d)."
+  },
+  {
+    "question_id": 16,
+    "prediction": [],
+    "ground_truth": [
+      "a",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "Which one is the confusable pair?\n\n## Step 1: Identify the"
+  },
+  {
+    "question_id": 17,
+    "prediction": [],
+    "ground_truth": [
+      "a",
+      "b"
+    ],
+    "correct": false,
+    "raw_output": "Which pair do you think is confusable?\n\n## Step 1: Identify"
+  },
+  {
+    "question_id": 18,
+    "prediction": [
+      "a",
+      "d"
+    ],
+    "ground_truth": [
+      "a",
+      "d"
+    ],
+    "correct": true,
+    "raw_output": " \nThe confusable pair is (a) and (d)."
+  },
+  {
+    "question_id": 19,
+    "prediction": [
+      "a"
+    ],
+    "ground_truth": [
+      "a",
+      "b"
+    ],
+    "correct": false,
+    "raw_output": "Which one is the confusable pair?\nFirst, let's compare (a"
+  },
+  {
+    "question_id": 20,
+    "prediction": [],
+    "ground_truth": [
+      "b",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "Step 1: Identify the key elements in each sentence: subject (p"
+  },
+  {
+    "question_id": 21,
+    "prediction": [
+      "c",
+      "d"
+    ],
+    "ground_truth": [
+      "b",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "The correct answer is (c) and (d). They are confusable"
+  },
+  {
+    "question_id": 22,
+    "prediction": [],
+    "ground_truth": [
+      "b",
+      "c"
+    ],
+    "correct": false,
+    "raw_output": " \nStep 1: Identify the key elements in each sentence: \n-"
+  },
+  {
+    "question_id": 23,
+    "prediction": [
+      "a",
+      "b"
+    ],
+    "ground_truth": [
+      "c",
+      "d"
+    ],
+    "correct": false,
+    "raw_output": "The confusable pair is (a) and (b)."
+  },
+  {
+    "question_id": 24,
+    "prediction": [],
+    "ground_truth": [
+      "a",
+      "b"
+    ],
+    "correct": false,
+    "raw_output": "Choose the confusable pair from the options above.\nThe confusable pair is"
+  }
+]

@@ -1,0 +1,54 @@
+data/
+outputs/
+base/
+situW/output/
+
+
+
+# ===== Python 캐시/바이트코드 =====
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ===== 가상환경 =====
+.venv/
+venv/
+env/
+ENV/
+
+# ===== 빌드/배포 산출물 =====
+build/
+dist/
+*.egg-info/
+.eggs/
+wheels/
+pip-wheel-metadata/
+
+# ===== 테스트/커버리지 캐시 =====
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# ===== 타입체커/린터 캐시 =====
+.mypy_cache/
+.pyre/
+.pytype/
+.ruff_cache/
+
+# ===== 주피터 =====
+.ipynb_checkpoints/
+
+# ===== IDE/에디터 =====
+.vscode/
+.idea/
+*.iml
+
+# ===== OS 파일 =====
+.DS_Store
+Thumbs.db
+
+# ===== 로그 =====
+*.log
