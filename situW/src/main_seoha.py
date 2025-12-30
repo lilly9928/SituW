@@ -37,6 +37,8 @@ def parse_args():
     # generation options
     parser.add_argument('--do_sample', action='store_true')
     parser.add_argument('--temperature', type=float, default=0.0)
+    
+    parser.add_argument('--cache_dir', type=str, default='/data3/hg_weight/hg_weight')
 
     args = parser.parse_args()
     return args
@@ -50,6 +52,7 @@ class HG_Model:
         self.mode = args.mode
         self.model_path = ''
         self.cot = args.cot
+        self.cache_dir = args.cache_dir
 
         # save path: cot 여부에 따라 하위 폴더 변경
         if self.cot == 'cot':
@@ -94,14 +97,14 @@ class HG_Model:
 
         self.tokenizer = AutoTokenizer.from_pretrained(
             self.model_path,
-            cache_dir='/data3/hg_weight/hg_weight'
+            cache_dir=self.cache_dir
         )
         # ✅ decoder-only 배치 생성에서는 left padding 권장
         self.tokenizer.padding_side = "left"
 
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
-            cache_dir="/data3/hg_weight/hg_weight",
+            cache_dir=self.cache_dir,
             quantization_config=bnb_config,
             device_map="auto"
         )
@@ -252,17 +255,25 @@ class HG_Model:
 
             if self.cot == "cot":
                 question += " Let's think step by step."
-
-            # ✅ ProofWriter는 CoT를 써도 최종 출력은 letter만 요구하도록 유지
-            user_content = (
-                f'context: "{context}"\n'
-                f'question: "{question}"\n'
-                f'options:\n'
-                f'- {options[0]}\n'
-                f'- {options[1]}\n'
-                f'- {options[2]}\n\n'
-                "Answer with only one letter among A, B, C."
-            )
+                user_content = (
+                    f'context: "{context}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n'
+                    f'- {options[0]}\n'
+                    f'- {options[1]}\n'
+                    f'- {options[2]}\n\n'
+                    "Let's think step by step."
+                )
+            else:
+                user_content = (
+                    f'context: "{context}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n'
+                    f'- {options[0]}\n'
+                    f'- {options[1]}\n'
+                    f'- {options[2]}\n\n'
+                    "Answer with only one letter among A, B, C."
+                )
 
         elif self.mode == "logiqa_val":
             premise = str(item.get("premise", "")).strip()
@@ -273,17 +284,25 @@ class HG_Model:
 
             if self.cot == "cot":
                 question += " Let's think step by step."
-
-            # ✅ LogiQA도 CoT를 써도 최종 출력은 letter만 요구하도록 유지
-            user_content = (
-                f'premise: "{premise}"\n'
-                f'hypothesis: "{hypothesis}"\n'
-                f'question: "{question}"\n'
-                f'options:\n'
-                f'- {options[0]}\n'
-                f'- {options[1]}\n\n'
-                "Answer with only one letter among A, B."
-            )
+                user_content = (
+                    f'premise: "{premise}"\n'
+                    f'hypothesis: "{hypothesis}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n'
+                    f'- {options[0]}\n'
+                    f'- {options[1]}\n\n'
+                    "Let's think step by step."
+                )
+            else:
+                user_content = (
+                    f'premise: "{premise}"\n'
+                    f'hypothesis: "{hypothesis}"\n'
+                    f'question: "{question}"\n'
+                    f'options:\n'
+                    f'- {options[0]}\n'
+                    f'- {options[1]}\n\n'
+                    "Answer with only one letter among A, B."
+                )
 
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")

@@ -1,13 +1,11 @@
 #!/bin/bash
 set -e
 
-export CUDA_VISIBLE_DEVICES=0,1,2
-
-python SituW/situW/src/main_seoha.py \
+python SituW/situW/src/main_seoha_datacenter.py \
   --data_path data/ThinkAgent/ProofWriter/proofwriter_val.json \
   --save_path SituW/situW/output \
   --model_name qwen_72b_instruct \
   --mode proofwriter_val \
   --batch_size 64 \
   --max_new_tokens 128 \
-  --cot cot
+  --cache_dir /data3/hg_weight/hg_weight
