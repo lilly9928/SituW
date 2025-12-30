@@ -8,5 +8,5 @@ python /data3/KJE/code/SituW/situW/src/main_seoha.py \
   --save_path /data3/KJE/code/SituW/situW/output \
   --model_name mistral_7b_instruct \
   --mode proofwriter_val \
-  --batch_size 32 \
+  --batch_size 64 \
   --max_new_tokens 16

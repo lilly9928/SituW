@@ -28,9 +28,9 @@ def parse_args():
 
     parser.add_argument('--max_new_tokens', type=int, default=16)
 
-    # ✅ 배치 크기 추가 (큰 데이터셋은 8~32 정도로 조정)
+    # ✅ 배치 크기
     parser.add_argument('--batch_size', type=int, default=8)
-    
+
     # chain-of-thought 옵션
     parser.add_argument('--cot', type=str, default='none')
 
@@ -47,11 +47,11 @@ class HG_Model:
         self.args = args
         self.data_path = args.data_path
         self.model_name = args.model_name
-        # self.save_path = args.save_path
         self.mode = args.mode
         self.model_path = ''
         self.cot = args.cot
 
+        # save path: cot 여부에 따라 하위 폴더 변경
         if self.cot == 'cot':
             self.save_path = os.path.join(args.save_path, "zero_shot_cot")
         else:
@@ -96,17 +96,17 @@ class HG_Model:
             self.model_path,
             cache_dir='/data3/hg_weight/hg_weight'
         )
+        # ✅ decoder-only 배치 생성에서는 left padding 권장
         self.tokenizer.padding_side = "left"
-        
+
         self.model = AutoModelForCausalLM.from_pretrained(
             self.model_path,
             cache_dir="/data3/hg_weight/hg_weight",
             quantization_config=bnb_config,
             device_map="auto"
         )
-
         self.model.eval()
-        
+
         # pad token safety
         if self.tokenizer.pad_token is None and self.tokenizer.eos_token is not None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
@@ -204,7 +204,7 @@ class HG_Model:
                     f'- {options[2]}\n\n'
                     "Let's think step by step:"
                 )
-            else:                
+            else:
                 user_content = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
@@ -252,7 +252,8 @@ class HG_Model:
 
             if self.cot == "cot":
                 question += " Let's think step by step."
-                
+
+            # ✅ ProofWriter는 CoT를 써도 최종 출력은 letter만 요구하도록 유지
             user_content = (
                 f'context: "{context}"\n'
                 f'question: "{question}"\n'
@@ -272,7 +273,8 @@ class HG_Model:
 
             if self.cot == "cot":
                 question += " Let's think step by step."
-                
+
+            # ✅ LogiQA도 CoT를 써도 최종 출력은 letter만 요구하도록 유지
             user_content = (
                 f'premise: "{premise}"\n'
                 f'hypothesis: "{hypothesis}"\n'
@@ -350,21 +352,29 @@ class HG_Model:
             return messages[-1]["content"]
 
     # -------------------------
+    # file save utils
+    # -------------------------
+    def _atomic_json_dump(self, obj, path):
+        tmp_path = path + ".tmp"
+        with open(tmp_path, "w", encoding="utf-8") as f:
+            json.dump(obj, f, ensure_ascii=False, indent=2)
+        os.replace(tmp_path, path)
+
+    def _make_payload(self, results, correct_cnt, total_cnt):
+        acc = (correct_cnt / total_cnt) * 100.0 if total_cnt > 0 else 0.0
+        return {"accuracy": acc, "results": results}
+
+    # -------------------------
     # batched generation
     # -------------------------
     @torch.no_grad()
     def run_batch(self, batch_items):
-        """
-        batch_items: list of dicts
-        returns list of result dicts
-        """
         batch_prompts = []
         gt_choices = []
         ids = []
         story_ids = []
 
         for item in batch_items:
-            # uid/story_id
             if self.mode == "folio_val":
                 uid = item.get("example_id", None)
                 story_id = item.get("story_id", None)
@@ -380,7 +390,6 @@ class HG_Model:
             ids.append(uid)
             story_ids.append(story_id)
 
-        # tokenize batch
         inputs = self.tokenizer(
             batch_prompts,
             return_tensors="pt",
@@ -388,7 +397,6 @@ class HG_Model:
             truncation=True
         ).to(self.model.device)
 
-        # 각 샘플의 실제 입력 길이
         input_lens = inputs["attention_mask"].sum(dim=1).tolist()
 
         outputs = self.model.generate(
@@ -420,7 +428,9 @@ class HG_Model:
         return results
 
     # -------------------------
-    # generation loop (batched)
+    # generation loop
+    # - 처음 2 배치까지만 중간 저장(덮어쓰기)해서 생성 형태 확인
+    # - 이후에는 저장 안 하다가 마지막에 최종 저장
     # -------------------------
     def batch_generation(self):
         raw_dataset = self.load_raw_dataset()
@@ -431,6 +441,16 @@ class HG_Model:
 
         bs = max(1, int(self.args.batch_size))
         buffer = []
+
+        os.makedirs(self.save_path, exist_ok=True)
+
+        if self.cot == "cot":
+            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_cot_result.json")
+        else:
+            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_result.json")
+
+        saved_batches = 0  # ✅ 몇 배치 저장했는지
+        save_first_n_batches = 2  # ✅ 처음 N 배치만 저장
 
         for item in tqdm(raw_dataset, desc=f"Evaluating ({self.mode})", total=len(raw_dataset)):
             buffer.append(item)
@@ -445,6 +465,12 @@ class HG_Model:
                 total_cnt += 1
                 correct_cnt += int(r["correct"])
 
+            # ✅ 처음 2 배치까지만 중간 저장
+            if saved_batches < save_first_n_batches:
+                payload = self._make_payload(results, correct_cnt, total_cnt)
+                self._atomic_json_dump(payload, out_file)
+                saved_batches += 1
+
         # leftover
         if len(buffer) > 0:
             batch_results = self.run_batch(buffer)
@@ -453,28 +479,20 @@ class HG_Model:
                 total_cnt += 1
                 correct_cnt += int(r["correct"])
 
-        os.makedirs(self.save_path, exist_ok=True)
-        
-        if self.cot == "cot":
-            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_cot_result.json")
-        else:
-            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_result.json")
+            # leftover도 "배치"로 간주해서, 아직 2번 저장 안 했으면 저장
+            if saved_batches < save_first_n_batches:
+                payload = self._make_payload(results, correct_cnt, total_cnt)
+                self._atomic_json_dump(payload, out_file)
+                saved_batches += 1
 
-        acc = (correct_cnt / total_cnt) * 100.0 if total_cnt > 0 else 0.0
+        # ✅ 최종 결과 저장(전체 다 돌고 난 뒤)
+        payload = self._make_payload(results, correct_cnt, total_cnt)
+        self._atomic_json_dump(payload, out_file)
 
-        payload = {
-            "accuracy": acc,
-            "results": results
-        }
-
-        with open(out_file, "w", encoding="utf-8") as f:
-            json.dump(payload, f, ensure_ascii=False, indent=2)
-
+        acc = payload["accuracy"]
         print(f"Done. ACC: {correct_cnt}/{total_cnt} = {acc:.2f}%")
         print(f"Results saved to: {out_file}")
         return results
-
-
 
 
 if __name__ == '__main__':
