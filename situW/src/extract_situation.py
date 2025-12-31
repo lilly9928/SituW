@@ -207,13 +207,13 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default='./data/LogiQA2.0/logiqa2nli/DATA/QA2NLI')
     parser.add_argument('--dataset_name', type=str)
     parser.add_argument('--split', type=str)
-    parser.add_argument('--save_path', type=str, default='./outputs')
+    parser.add_argument('--save_path', type=str, default='/data3/KJE/code/SituW/situW/output/situation_memory')
     parser.add_argument('--demonstration_path', type=str, default='./icl_examples')
     parser.add_argument('--api_key', type=str)
     parser.add_argument('--model_name', type=str)
     parser.add_argument('--stop_words', type=str, default='------')
     parser.add_argument('--mode', type=str)
-    parser.add_argument('--max_new_tokens', type=int)
+    parser.add_argument('--max_new_tokens', default=20,type=int)
     args = parser.parse_args()
     return args
 

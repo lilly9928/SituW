@@ -34,10 +34,13 @@ def parse_args():
     # chain-of-thought 옵션
     parser.add_argument('--cot', type=str, default='none')
 
+    # ✅ few-shot 옵션: none / two
+    parser.add_argument('--shot', type=str, default='none', choices=['none', 'two'])
+
     # generation options
     parser.add_argument('--do_sample', action='store_true')
     parser.add_argument('--temperature', type=float, default=0.0)
-    
+
     parser.add_argument('--cache_dir', type=str, default='/data3/hg_weight/hg_weight')
 
     args = parser.parse_args()
@@ -52,6 +55,7 @@ class HG_Model:
         self.mode = args.mode
         self.model_path = ''
         self.cot = args.cot
+        self.shot = args.shot
         self.cache_dir = args.cache_dir
 
         # save path: cot 여부에 따라 하위 폴더 변경
@@ -118,6 +122,205 @@ class HG_Model:
 
         # chat template availability
         self.use_chat_template = hasattr(self.tokenizer, "apply_chat_template") and (self.tokenizer.chat_template is not None)
+
+        # -------------------------
+        # few-shot examples (2-shot)
+        # - two-shot + cot: reasoning 포함 예시
+        # - two-shot (cot 아님): reasoning 없이 Answer만 있는 예시
+        # -------------------------
+        self.fewshot_map = self._build_fewshot_map()
+
+    def _build_fewshot_map(self):
+        """
+        Returns a dict: mode -> dict{"cot": str, "plain": str}
+        Used only when args.shot == "two".
+        """
+        # -------------------------
+        # proofwriter
+        # -------------------------
+        proofwriter_two_cot = (
+            'context: Gary is furry. Gary is nice. Gary is red. Gary is rough. Gary is not smart. Gary is white. Gary is young. '
+            'If Gary is nice and Gary is not white then Gary is red. If someone is white then they are red. All young people are furry. '
+            'If someone is white and not red then they are furry. Smart, red people are rough. '
+            'If Gary is not red and Gary is not furry then Gary is not smart. If Gary is white then Gary is not smart. '
+            'If someone is rough and not white then they are not smart.\n'
+            'question: Based on the above theory, is the following statement true, false, or unknown? Gary is white.\n'
+            'options:\n'
+            '- A) True\n'
+            '- B) False\n'
+            '- C) Unknown\n\n'
+            "Let's think step by step:\n\n"
+            'Gary is described as furry, nice, red, rough, not smart, white, and young. The question asks if "Gary is white" is true, false, or unknown. '
+            'This fact is stated directly, so it is assumed true unless it creates a contradiction. The rule that white implies red is satisfied, since Gary is both. '
+            'The rule that if Gary is white, he is not smart also matches the facts. The rule that all young people are furry is consistent as well. '
+            'No conditional contradicts Gary being white. Therefore, the statement "Gary is white" is true.\n'
+            'Answer: A) True\n\n'
+            'context: The bald eagle chases the bear. The bald eagle eats the bear. The bear chases the bald eagle. The bear eats the bald eagle. '
+            'The bear is green. The bear is nice. The bear likes the bald eagle. '
+            'If the bear likes the bald eagle and the bald eagle eats the bear then the bald eagle is nice. '
+            'If someone is cold and nice then they like the bald eagle.\n'
+            'question: Based on the above theory, is the following statement true, false, or unknown? The bear is not nice.\n'
+            'options:\n'
+            '- A) True\n'
+            '- B) False\n'
+            '- C) Unknown\n\n'
+            "Let's think step by step:\n\n"
+            'The context states that the bear is nice. This is a direct fact. The question asks whether "The bear is not nice" is true, false, or unknown. '
+            'Since the opposite is explicitly stated, the claim that the bear is not nice contradicts the given fact. '
+            'No rule overrides or conflicts with the statement that the bear is nice. Therefore, the statement "The bear is not nice" must be false.\n'
+            'Answer: B) False\n\n'
+        )
+
+        # ✅ 요청하신: two-shot인데 cot 아닐 때는 reasoning 없이 Answer만
+        proofwriter_two_plain = (
+            'context: Gary is furry. Gary is nice. Gary is red. Gary is rough. Gary is not smart. Gary is white. Gary is young. '
+            'If Gary is nice and Gary is not white then Gary is red. If someone is white then they are red. All young people are furry. '
+            'If someone is white and not red then they are furry. Smart, red people are rough. '
+            'If Gary is not red and Gary is not furry then Gary is not smart. If Gary is white then Gary is not smart. '
+            'If someone is rough and not white then they are not smart.\n'
+            'question: Based on the above theory, is the following statement true, false, or unknown? Gary is white.\n'
+            'options:\n'
+            '- A) True\n'
+            '- B) False\n'
+            '- C) Unknown\n\n'
+            'Answer: A) True\n\n'
+            'context: The bald eagle chases the bear. The bald eagle eats the bear. The bear chases the bald eagle. The bear eats the bald eagle. '
+            'The bear is green. The bear is nice. The bear likes the bald eagle. '
+            'If the bear likes the bald eagle and the bald eagle eats the bear then the bald eagle is nice. '
+            'If someone is cold and nice then they like the bald eagle.\n'
+            'question: Based on the above theory, is the following statement true, false, or unknown? The bear is not nice.\n'
+            'options:\n'
+            '- A) True\n'
+            '- B) False\n'
+            '- C) Unknown\n\n'
+            'Answer: B) False\n\n'
+        )
+
+        # -------------------------
+        # folio
+        # -------------------------
+        folio_two_cot = (
+            "context: All people who regularly drink coffee are dependent on caffeine.\n"
+            "People regularly drink coffee, or they don't want to be addicted to caffeine, or both.\n"
+            "No one who doesn't want to be addicted to caffeine is unaware that caffeine is a drug.\n"
+            "Rina is either a student who is unaware that caffeine is a drug, or she is not a student and is she aware that caffeine is a drug.\n"
+            "Rina is either a student who is dependent on caffeine, or she is not a student and not dependent on caffeine.\n"
+            "question: Based on the above information, is the following statement true, false, or uncertain? Rina doesn't want to be addicted to caffeine or is unaware that caffeine is a drug.\n"
+            "options:\n"
+            "- A) True\n"
+            "- B) False\n"
+            "- C) Uncertain\n\n"
+            "Let's think step by step:\n\n"
+            "From the given information, Rina must fall into one of two cases. Either she is a student who is unaware that caffeine is a drug and dependent on caffeine, "
+            "or she is not a student, is aware that caffeine is a drug, and not dependent on caffeine. In the first case, Rina is unaware that caffeine is a drug, "
+            "so the statement “Rina doesn't want to be addicted to caffeine or is unaware that caffeine is a drug” is true because the second part holds. "
+            "In the second case, Rina is not dependent on caffeine and does not regularly drink coffee. Since everyone either drinks coffee or does not want to be addicted to caffeine, "
+            "she must not want to be addicted. This makes the first part of the statement true.\n"
+            "Because the statement is true in all possible cases, the correct answer is A) True.\n"
+            "Answer: A) True\n\n"
+            "context: The Blake McFall Company Building is a building added to the National Register of Historic Places in 1990.\n"
+            "The Emmet Building is a five-story building in Portland, Oregon.\n"
+            "The Emmet Building was built in 1915.\n"
+            "The Emmet Building is another name for the Blake McFall Company Building.\n"
+            "John works at the Emmet Building.\n"
+            "question: Based on the above information, is the following statement true, false, or uncertain? John started his current job in 1990.\n"
+            "options:\n"
+            "- A) True\n"
+            "- B) False\n"
+            "- C) Uncertain\n\n"
+            "Let's think step by step:\n\n"
+            "The information states that the Blake McFall Company Building was added to the National Register of Historic Places in 1990, and that the Emmet Building is another name for the same building. "
+            "We are also told that John works at the Emmet Building. However, there is no information about when John started working there, nor any rule that links the year a building was added to the register "
+            "with the start date of someone’s job. Therefore, John’s job start year cannot be determined from the given facts.\n\n"
+            "Answer: C) Uncertain\n\n"
+        )
+
+        folio_two_plain = (
+            "context: All people who regularly drink coffee are dependent on caffeine.\n"
+            "People regularly drink coffee, or they don't want to be addicted to caffeine, or both.\n"
+            "No one who doesn't want to be addicted to caffeine is unaware that caffeine is a drug.\n"
+            "Rina is either a student who is unaware that caffeine is a drug, or she is not a student and is she aware that caffeine is a drug.\n"
+            "Rina is either a student who is dependent on caffeine, or she is not a student and not dependent on caffeine.\n"
+            "question: Based on the above information, is the following statement true, false, or uncertain? Rina doesn't want to be addicted to caffeine or is unaware that caffeine is a drug.\n"
+            "options:\n"
+            "- A) True\n"
+            "- B) False\n"
+            "- C) Uncertain\n\n"
+            "Answer: A) True\n\n"
+            "context: The Blake McFall Company Building is a building added to the National Register of Historic Places in 1990.\n"
+            "The Emmet Building is a five-story building in Portland, Oregon.\n"
+            "The Emmet Building was built in 1915.\n"
+            "The Emmet Building is another name for the Blake McFall Company Building.\n"
+            "John works at the Emmet Building.\n"
+            "question: Based on the above information, is the following statement true, false, or uncertain? John started his current job in 1990.\n"
+            "options:\n"
+            "- A) True\n"
+            "- B) False\n"
+            "- C) Uncertain\n\n"
+            "Answer: C) Uncertain\n\n"
+        )
+
+        # -------------------------
+        # logiqa
+        # -------------------------
+        logiqa_two_cot = (
+            "premise: Screenwriter moviegoers are those who don't mind being spoiled by spoilers and even inquire about plot introductions and review all kinds of movies in advance. "
+            "This kind of moviegoers pursue the feeling of controlling the development of the plot and don't like surprises.\n"
+            "hypothesis: Xiao Li belongs to the screenwriter moviegoers according to the above definition, because he is fond of suspense movies, enjoys brain-burning plots, and assumes the role of a detective when watching movies.\n"
+            "question: Does the premise entail the hypothesis?\n"
+            "options:\n"
+            "- A) entailment\n"
+            "- B) not-entailment\n\n"
+            "Let's think step by step:\n\n"
+            "The premise defines screenwriter moviegoers as people who do not mind spoilers, actively look up plot introductions, review movies in advance, seek control over the plot development, and dislike surprises. "
+            "The hypothesis claims that Xiao Li belongs to this group because he likes suspense movies, enjoys complex plots, and imagines himself as a detective while watching films. "
+            "These traits are different from the defining characteristics in the premise and do not imply that he likes spoilers, avoids surprises, or checks plots in advance. "
+            "Therefore, the premise does not logically support the hypothesis.\n\n"
+            "Answer: B) not-entailment\n\n"
+            "premise: All foreign students from China live on campus; All students living on campus must participate in the sports meeting; Some Chinese students have joined the student union; "
+            "Some students majoring in psychology have also joined the student union; None of the psychology majors took part in the sports meeting.\n"
+            "hypothesis: Some Chinese students majored in psychology cannot be drawn as a conclusion.\n"
+            "question: Does the premise entail the hypothesis?\n"
+            "options:\n"
+            "- A) entailment\n"
+            "- B) not-entailment\n\n"
+            "Let's think step by step:\n\n"
+            "The premises state that all foreign students from China live on campus, and all students living on campus must participate in the sports meeting. "
+            "Some Chinese students have joined the student union, and some psychology majors have also joined the student union. None of the psychology majors took part in the sports meeting. "
+            "This tells us that psychology majors did not live on campus, so they cannot be foreign students from China. While some Chinese students and some psychology majors are in the student union, "
+            "there is no direct information linking any Chinese students to the psychology major. Therefore, we cannot conclude that any Chinese student majored in psychology based on the given information.\n\n"
+            "Answer: A) entailment\n\n"
+        )
+
+        logiqa_two_plain = (
+            "premise: Screenwriter moviegoers are those who don't mind being spoiled by spoilers and even inquire about plot introductions and review all kinds of movies in advance. "
+            "This kind of moviegoers pursue the feeling of controlling the development of the plot and don't like surprises.\n"
+            "hypothesis: Xiao Li belongs to the screenwriter moviegoers according to the above definition, because he is fond of suspense movies, enjoys brain-burning plots, and assumes the role of a detective when watching movies.\n"
+            "question: Does the premise entail the hypothesis?\n"
+            "options:\n"
+            "- A) entailment\n"
+            "- B) not-entailment\n\n"
+            "Answer: B) not-entailment\n\n"
+            "premise: All foreign students from China live on campus; All students living on campus must participate in the sports meeting; Some Chinese students have joined the student union; "
+            "Some students majoring in psychology have also joined the student union; None of the psychology majors took part in the sports meeting.\n"
+            "hypothesis: Some Chinese students majored in psychology cannot be drawn as a conclusion.\n"
+            "question: Does the premise entail the hypothesis?\n"
+            "options:\n"
+            "- A) entailment\n"
+            "- B) not-entailment\n\n"
+            "Answer: A) entailment\n\n"
+        )
+
+        # prontoqa: 예시 없음
+        prontoqa_two_cot = ""
+        prontoqa_two_plain = ""
+
+        return {
+            "proofwriter_val": {"cot": proofwriter_two_cot, "plain": proofwriter_two_plain},
+            "folio_val": {"cot": folio_two_cot, "plain": folio_two_plain},
+            "logiqa_val": {"cot": logiqa_two_cot, "plain": logiqa_two_plain},
+            "prontoqa_val": {"cot": prontoqa_two_cot, "plain": prontoqa_two_plain},
+        }
 
     # -------------------------
     # dataset loader
@@ -186,6 +389,15 @@ class HG_Model:
     # build prompt messages (mode-specific)
     # -------------------------
     def build_prompt_messages(self, item):
+        # few-shot prefix (2-shot) if requested
+        fewshot_prefix = ""
+        if self.shot == "two":
+            mode_pack = self.fewshot_map.get(self.mode, {"cot": "", "plain": ""})
+            if self.cot == "cot":
+                fewshot_prefix = mode_pack.get("cot", "")
+            else:
+                fewshot_prefix = mode_pack.get("plain", "")
+
         if self.mode == "folio_val":
             premises = item.get("premises", "").strip()
             conclusion = item.get("conclusion", "").strip()
@@ -198,7 +410,7 @@ class HG_Model:
             options = ["A) True", "B) False", "C) Uncertain"]
 
             if self.cot == "cot":
-                user_content = (
+                cur = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
                     f'options:\n'
@@ -208,7 +420,7 @@ class HG_Model:
                     "Let's think step by step:"
                 )
             else:
-                user_content = (
+                cur = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
                     f'options:\n'
@@ -217,6 +429,8 @@ class HG_Model:
                     f'- {options[2]}\n\n'
                     "Answer with only one letter among A, B, C."
                 )
+
+            user_content = (fewshot_prefix + cur) if fewshot_prefix else cur
 
         elif self.mode == "prontoqa_val":
             context = str(item.get("context", "")).strip()
@@ -231,19 +445,21 @@ class HG_Model:
                 options_lines = ["- A) True", "- B) False"]
 
             if self.cot == "cot":
-                user_content = (
+                cur = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
                     f'options:\n' + "\n".join(options_lines) + "\n\n"
                     "Let's think step by step:"
                 )
             else:
-                user_content = (
+                cur = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
                     f'options:\n' + "\n".join(options_lines) + "\n\n"
                     "Answer with only one letter among A, B."
                 )
+
+            user_content = (fewshot_prefix + cur) if fewshot_prefix else cur
 
         elif self.mode == "proofwriter_val":
             theory = str(item.get("theory", "")).strip()
@@ -254,7 +470,7 @@ class HG_Model:
             options = ["A) True", "B) False", "C) Unknown"]
 
             if self.cot == "cot":
-                user_content = (
+                cur = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
                     f'options:\n'
@@ -264,7 +480,7 @@ class HG_Model:
                     "Let's think step by step:"
                 )
             else:
-                user_content = (
+                cur = (
                     f'context: "{context}"\n'
                     f'question: "{question}"\n'
                     f'options:\n'
@@ -274,6 +490,8 @@ class HG_Model:
                     "Answer with only one letter among A, B, C."
                 )
 
+            user_content = (fewshot_prefix + cur) if fewshot_prefix else cur
+
         elif self.mode == "logiqa_val":
             premise = str(item.get("premise", "")).strip()
             hypothesis = str(item.get("hypothesis", "")).strip()
@@ -282,7 +500,7 @@ class HG_Model:
             options = ["A) entailment", "B) not-entailment"]
 
             if self.cot == "cot":
-                user_content = (
+                cur = (
                     f'premise: "{premise}"\n'
                     f'hypothesis: "{hypothesis}"\n'
                     f'question: "{question}"\n'
@@ -292,7 +510,7 @@ class HG_Model:
                     "Let's think step by step:"
                 )
             else:
-                user_content = (
+                cur = (
                     f'premise: "{premise}"\n'
                     f'hypothesis: "{hypothesis}"\n'
                     f'question: "{question}"\n'
@@ -301,6 +519,8 @@ class HG_Model:
                     f'- {options[1]}\n\n'
                     "Answer with only one letter among A, B."
                 )
+
+            user_content = (fewshot_prefix + cur) if fewshot_prefix else cur
 
         else:
             raise ValueError(f"Unsupported mode: {self.mode}")
@@ -323,12 +543,10 @@ class HG_Model:
 
         # prontoqa/logiqa -> A/B
         if self.mode in ["prontoqa_val", "logiqa_val"]:
-            # 1) "B) False" 같은 형태 우선
             m = re.search(r"([AB])\s*\)", tail, flags=re.IGNORECASE)
             if m:
                 return m.group(1).upper()
 
-            # 2) 끝부분에서 단독 A/B 찾기 (여러 개면 마지막)
             ms = re.findall(r"\b([AB])\b", tail, flags=re.IGNORECASE)
             if ms:
                 return ms[-1].upper()
@@ -342,7 +560,6 @@ class HG_Model:
                     return "B"
                 return None
 
-            # logiqa fallback
             if "not-entailment" in tl or "not entailment" in tl or "non-entailment" in tl:
                 return "B"
             if "entailment" in tl or "entailed" in tl or "entails" in tl:
@@ -350,12 +567,10 @@ class HG_Model:
             return None
 
         # folio/proofwriter -> A/B/C
-        # 1) "B) False" / "C) Unknown" 같은 형태 우선
         m = re.search(r"([ABC])\s*\)", tail, flags=re.IGNORECASE)
         if m:
             return m.group(1).upper()
 
-        # 2) 끝부분에서 단독 A/B/C 찾기 (여러 개면 마지막)
         ms = re.findall(r"\b([ABC])\b", tail, flags=re.IGNORECASE)
         if ms:
             return ms[-1].upper()
@@ -368,7 +583,6 @@ class HG_Model:
         if "uncertain" in tl or "unknown" in tl:
             return "C"
         return None
-
 
     # -------------------------
     # prompt -> string
@@ -476,13 +690,15 @@ class HG_Model:
 
         os.makedirs(self.save_path, exist_ok=True)
 
-        if self.cot == "cot":
-            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_cot_result.json")
-        else:
-            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}_result.json")
+        shot_tag = "" if self.shot == "none" else f"_{self.shot}shot"
 
-        saved_batches = 0  # ✅ 몇 배치 저장했는지
-        save_first_n_batches = 2  # ✅ 처음 N 배치만 저장
+        if self.cot == "cot":
+            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}{shot_tag}_cot_result.json")
+        else:
+            out_file = os.path.join(self.save_path, f"{self.model_name}_{self.mode}{shot_tag}_result.json")
+
+        saved_batches = 0
+        save_first_n_batches = 2
 
         for item in tqdm(raw_dataset, desc=f"Evaluating ({self.mode})", total=len(raw_dataset)):
             buffer.append(item)
@@ -497,13 +713,11 @@ class HG_Model:
                 total_cnt += 1
                 correct_cnt += int(r["correct"])
 
-            # ✅ 처음 2 배치까지만 중간 저장
             if saved_batches < save_first_n_batches:
                 payload = self._make_payload(results, correct_cnt, total_cnt)
                 self._atomic_json_dump(payload, out_file)
                 saved_batches += 1
 
-        # leftover
         if len(buffer) > 0:
             batch_results = self.run_batch(buffer)
             for r in batch_results:
@@ -511,13 +725,11 @@ class HG_Model:
                 total_cnt += 1
                 correct_cnt += int(r["correct"])
 
-            # leftover도 "배치"로 간주해서, 아직 2번 저장 안 했으면 저장
             if saved_batches < save_first_n_batches:
                 payload = self._make_payload(results, correct_cnt, total_cnt)
                 self._atomic_json_dump(payload, out_file)
                 saved_batches += 1
 
-        # ✅ 최종 결과 저장(전체 다 돌고 난 뒤)
         payload = self._make_payload(results, correct_cnt, total_cnt)
         self._atomic_json_dump(payload, out_file)
 

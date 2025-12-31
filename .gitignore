@@ -2,6 +2,7 @@ data/
 outputs/
 base/
 situW/output/
+*.key
 
 
 

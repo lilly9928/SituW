@@ -5,47 +5,75 @@ import asyncio
 from typing import Any
 import random
 from retrying import retry
+from openai import AsyncOpenAI
 
-@backoff.on_exception(backoff.expo, (openai.error.RateLimitError, openai.error.APIConnectionError))
+
+try:
+    # openai 1.x
+    RateLimitError = openai.RateLimitError
+    APIConnectionError = openai.APIConnectionError
+except AttributeError:
+    # openai 0.x
+    RateLimitError = openai.error.RateLimitError
+    APIConnectionError = openai.error.APIConnectionError
+
+@backoff.on_exception(backoff.expo, (RateLimitError, APIConnectionError))
 def completions_with_backoff(**kwargs):
     return openai.Completion.create(**kwargs)
 
-@backoff.on_exception(backoff.expo, (openai.error.RateLimitError, openai.error.APIConnectionError))
+@backoff.on_exception(backoff.expo, (RateLimitError, APIConnectionError))
 def chat_completions_with_backoff(**kwargs):
     return openai.ChatCompletion.create(**kwargs)
 
-async def dispatch_openai_chat_requests(
-    messages_list: list[list[dict[str,Any]]],
-    model: str,
-    temperature: float,
-    max_tokens: int,
-    top_p: float,
-    stop_words: list[str]
-) -> list[str]:
-    """Dispatches requests to OpenAI API asynchronously.
-    
-    Args:
-        messages_list: List of messages to be sent to OpenAI ChatCompletion API.
-        model: OpenAI model to use.
-        temperature: Temperature to use for the model.
-        max_tokens: Maximum number of tokens to generate.
-        top_p: Top p to use for the model.
-        stop_words: List of words to stop the model from generating.
-    Returns:
-        List of responses from OpenAI API.
-    """
-    async_responses = [
-        openai.ChatCompletion.acreate(
+client = AsyncOpenAI()
+
+async def dispatch_openai_chat_requests(messages_list, model, max_tokens):
+    tasks = [
+        client.chat.completions.create(
             model=model,
-            messages=x,
-            temperature=temperature,
-            max_tokens=max_tokens,
-            top_p=top_p,
-            stop = stop_words
+            messages=msgs,
+            max_completion_tokens=max_tokens,   
         )
-        for x in messages_list
+        for msgs in messages_list
     ]
-    return await asyncio.gather(*async_responses)
+    resps = await asyncio.gather(*tasks)
+    return [r.choices[0].message.content for r in resps]
+
+
+# async def dispatch_openai_chat_requests(
+#     messages_list: list[list[dict[str,Any]]],
+#     model: str,
+#     temperature: float,
+#     max_tokens: int,
+#     top_p: float,
+#     stop_words: list[str]
+# ) -> list[str]:
+#     """Dispatches requests to OpenAI API asynchronously.
+    
+#     Args:
+#         messages_list: List of messages to be sent to OpenAI ChatCompletion API.
+#         model: OpenAI model to use.
+#         temperature: Temperature to use for the model.
+#         max_tokens: Maximum number of tokens to generate.
+#         top_p: Top p to use for the model.
+#         stop_words: List of words to stop the model from generating.
+#     Returns:
+#         List of responses from OpenAI API.
+#     """
+#     breakpoint()
+#     async_responses = [
+#         openai.ChatCompletion.acreate(
+#             model=model,
+#             messages=x,
+#             temperature=temperature,
+#             max_tokens=max_tokens,
+#             top_p=top_p,
+#             # stop = stop_words
+#         )
+#         for x in messages_list
+#     ]
+#     breakpoint()
+#     return await asyncio.gather(*async_responses)
 
 async def dispatch_openai_prompt_requests(
     messages_list: list[list[dict[str,Any]]],
@@ -87,9 +115,9 @@ class OpenAIModel:
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": input_string}
                     ],
-                temperature = temperature,
-                top_p = 1,
-                stop = self.stop_words
+                # temperature = temperature,
+                # top_p = 1,
+                # stop = self.stop_words
         )
         generated_text = response['choices'][0]['message']['content'].strip()
         finish_reason = response['choices'][0]['finish_reason']
@@ -123,16 +151,14 @@ class OpenAIModel:
             open_ai_messages_list.append(
                 [{"role": "system", "content": system_prompt}, {"role": "user", "content": message}]
             )
-        # if max_token is not None:
-        #     max_new_token = max_token
-        # else:
-        #     
+        breakpoint()
         max_new_token = self.max_new_tokens
         predictions = asyncio.run(
             dispatch_openai_chat_requests(
                     open_ai_messages_list, self.model_name, temperature, max_new_token, 1.0, self.stop_words
             )
         )
+        breakpoint()
         finish_reason = [x['choices'][0]['finish_reason'].strip() for x in predictions]
         return [x['choices'][0]['message']['content'].strip() for x in predictions]
     
@@ -146,7 +172,7 @@ class OpenAIModel:
 
     def batch_generate(self, messages_list, max_token=None, temperature = 0.0):
         if True:
-            # breakpoint()
+            breakpoint()
             return self.batch_chat_generate(messages_list, max_token, temperature)
         else:
             raise Exception("Model name not recognized")
