@@ -1,5 +1,5 @@
 import sys
-sys.path.append('/data3/KJE/code/WIL_DeepLearningProject_2/NS_Parser/SITUM_EMNLP')
+sys.path.append('/data3/KJE/code/SituW/situW')
 
 import json
 import os
@@ -39,7 +39,7 @@ class GPT3_Reasoning_Graph_Baseline:
            with open(os.path.join(self.data_path, f'{split}_new2.json')) as f:
                 raw_dataset = json.load(f)
         else:
-            with open(os.path.join(self.data_path, self.dataset_name, f'{split}.json')) as f:
+            with open(os.path.join(self.data_path, f'{self.dataset_name.lower()}_{split}.json')) as f:
                 raw_dataset = json.load(f)
 
         return raw_dataset
@@ -55,34 +55,35 @@ class GPT3_Reasoning_Graph_Baseline:
         # load raw dataset
         memory_bank = {}
         raw_dataset = self.load_raw_dataset(self.split)
+        breakpoint()
         
         seen = set()
         sentence_items = []
         for item in raw_dataset:
-            pid = item['id']
+            pid = item['story_id']
             if pid in seen:
                 continue
             seen.add(pid)
 
-            for sent in [s.strip() for s in item['premise'].split('.') if s.strip()]:
-                sentence_items.append({'parent_id': pid, 'premise': sent})
+            for sent in [s.strip() for s in item['premises'].split('.') if s.strip()]:
+                sentence_items.append({'parent_id': pid, 'premises': sent})
 
         print(f"Loaded {len(raw_dataset)} examples from {self.split} split.")
-
+        breakpoint()
         # split dataset into chunks
         dataset_chunks = [sentence_items[i:i + batch_size] for i in range(0, len(sentence_items), batch_size)]
         for chunk in tqdm(dataset_chunks):
+            breakpoint()
             try:
                 start_time = time.time()
                 # import pdb;pdb.set_trace()
-                batch_time = self.openai_api.batch_generate([
-                    f"{example['premise']} {self.prompt['time']}" for example in chunk
-                ])
+                batch_time = self.openai_api.batch_generate([f"{example['premises']} {self.prompt['time']}" for example in chunk])
+                breakpoint()
                 batch_location = self.openai_api.batch_generate([
-                    f"{example['premise']} {self.prompt['location']}" for example in chunk
+                    f"{example['premises']} {self.prompt['location']}" for example in chunk
                 ])
                 batch_protagonist = self.openai_api.batch_generate([
-                    f"{example['premise']} {self.prompt['protagonist']}" for example in chunk
+                    f"{example['premises']} {self.prompt['protagonist']}" for example in chunk
                 ])
 
                 for i, example in enumerate(chunk):
@@ -98,11 +99,11 @@ class GPT3_Reasoning_Graph_Baseline:
                     memory_bank[pid]['protagonist'].add(batch_protagonist[i])
 
                 batch_cause = self.openai_api.batch_generate([
-                    f"{example['premise']} {self.format_memory(memory_bank[example['parent_id']])} {self.prompt['cause']}"
+                    f"{example['premises']} {self.format_memory(memory_bank[example['parent_id']])} {self.prompt['cause']}"
                     for example in chunk
                 ])
                 batch_intention = self.openai_api.batch_generate([
-                    f"{example['premise']} {self.format_memory(memory_bank[example['parent_id']])} {self.prompt['intention']}"
+                    f"{example['premises']} {self.format_memory(memory_bank[example['parent_id']])} {self.prompt['intention']}"
                     for example in chunk
                 ])
 
@@ -121,23 +122,24 @@ class GPT3_Reasoning_Graph_Baseline:
                         start_time = time.time()
 
                         # 개별 추론 처리
-                        prompt_time = f"{sample['premise']} {self.prompt['time']}"
+                        prompt_time = f"{sample['premises']} {self.prompt['time']}"
                         time_r, _ = self.openai_api.generate(prompt_time)
+                        breakpoint()
 
-                        prompt_location = f"{sample['premise'] } {self.prompt['location']}"
+                        prompt_location = f"{sample['premises'] } {self.prompt['location']}"
                         location_r, _ = self.openai_api.generate(prompt_location)
 
-                        prompt_protagonist = f"{sample['premise'] } {self.prompt['protagonist']}"
+                        prompt_protagonist = f"{sample['premises'] } {self.prompt['protagonist']}"
                         protagonist_r, _ = self.openai_api.generate(prompt_protagonist)
                         
                         memory_bank[pid]['time'].add(time_r)
                         memory_bank[pid]['location'].add(location_r)
                         memory_bank[pid]['protagonist'].add(protagonist_r)
 
-                        prompt_cause = f"{sample['premise']} {self.format_memory(memory_bank[pid])} {self.prompt['cause']}"
+                        prompt_cause = f"{sample['premises']} {self.format_memory(memory_bank[pid])} {self.prompt['cause']}"
                         cause_r, _ = self.openai_api.generate(prompt_cause)
 
-                        prompt_intention = f"{sample['premise']} {self.format_memory(memory_bank[pid])} {self.prompt['intention']}"
+                        prompt_intention = f"{sample['premises']} {self.format_memory(memory_bank[pid])} {self.prompt['intention']}"
                         intention_r, _ = self.openai_api.generate(prompt_intention)
 
                         memory_bank[pid]['cause'].add(cause_r)

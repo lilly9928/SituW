@@ -2,11 +2,11 @@
 
 
 api_key=""
-model_name="gpt-4o-mini"
-data_path="/data3/KJE/code/WIL_DeepLearningProject_2/NS_Parser/SITUM_EMNLP/data/LogiQA2.0/logiqa2nli/DATA/QA2NLI"
-dataset_name="logiqa" #FOLIO / LogicalDeduction / AR-LSAT /logiqa
+model_name="gpt-5"
+data_path="/data3/KJE/code/WIL_DeepLearningProject_2/SituationMemory/data/ThinkAgent/FOLIO"
+dataset_name="FOLIO" #FOLIO / LogicalDeduction / AR-LSAT /logiqa
 mode="Ours_CoT"
-split="test"
+split="val"
 # echo $dataset_name
 # echo $model_name
 # echo "EVAL"
