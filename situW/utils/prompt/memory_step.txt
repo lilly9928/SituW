@@ -1,0 +1,35 @@
+You are reading a logical context sentence-by-sentence.
+Return ONLY a valid JSON object. No extra text.
+
+Given:
+- sentence: the next sentence to read
+- memory_statements: list of normalized propositions accumulated so far
+- memory_protagonists: list of protagonists accumulated so far
+
+Extract NEW information from the sentence:
+1) time: explicit time expressions in the sentence; if none, ["none"]
+2) space: explicit location expressions; if none, ["none"]
+3) intention: explicit goal/purpose; if none, ["none"]
+4) proposition: a short normalized proposition for the sentence
+   - keep negation
+   - keep quantifiers roughly (every/each/are/is)
+5) protagonists_in_sentence: entities/kinds mentioned in the sentence (can include ones already in memory)
+
+Output JSON schema:
+{
+  "time": [...],
+  "space": [...],
+  "intention": [...],
+  "proposition": "...",
+  "protagonists_in_sentence": [...],
+  "confidence": 0.0-1.0
+}
+
+sentence:
+[[SENTENCE]]
+
+memory_statements:
+[[MEM_STATEMENTS]]
+
+memory_protagonists:
+[[MEM_PROTAGONISTS]]

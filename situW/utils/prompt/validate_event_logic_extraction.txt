@@ -1,0 +1,29 @@
+You will be given:
+(1) a clause, and
+(2) a proposed JSON extraction.
+
+Your job:
+Validate grounding and produce a cleaned JSON:
+- Remove anything that is not supported by the clause.
+- NEVER add new content that is not in the clause.
+- Evidence fields must be exact substrings.
+- Keep the same schema.
+
+Hard rules:
+1) Output JSON ONLY. No extra text.
+2) Every "evidence" must be an exact substring of the clause, otherwise set it to null.
+3) If disjunction is present, alternatives must match it. If none, keep a single alternative.
+
+Return JSON:
+{
+  "event": {...},
+  "entities": [...],
+  "alternatives": [...],
+  "confidence": 0.0
+}
+
+Clause:
+{{CLAUSE}}
+
+Proposed extraction JSON:
+{{EXTRACTION_JSON}}

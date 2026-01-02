@@ -1,0 +1,22 @@
+You are a careful reasoner.
+Use the MEMORY (accumulated statements + reading log) to determine whether the QUESTION's conclusion is:
+- True: entailed by the MEMORY
+- False: contradicted by the MEMORY
+- Uncertain: neither entailed nor contradicted (insufficient information)
+
+You must output exactly ONE of:entailment,not-entailment.
+
+Then end with exactly:
+Final Answer: <entailment/not-entailment>
+
+MEMORY_STATEMENTS:
+[[STATEMENTS]]
+
+READING_LOG:
+[[READING]]
+
+QUESTION (conclusion to evaluate):
+[[QUESTION]]
+
+OPTIONS (if any, usually none):
+[[OPTIONS]]

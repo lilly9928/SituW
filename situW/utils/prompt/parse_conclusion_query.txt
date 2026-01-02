@@ -1,0 +1,23 @@
+You will be given ONE conclusion sentence from a logic problem.
+
+Return JSON ONLY with the following schema:
+
+{
+  "alternatives": [
+    [
+      {"type":"fact","subject":"...","predicate":"...","object":null,"polarity":true}
+    ]
+  ]
+}
+
+Rules:
+- Represent top-level OR as multiple alternatives.
+- Represent AND inside each alternative as multiple facts in the same list.
+- Use only atomic facts. No rules.
+- Normalize: lowercase, collapse spaces. Do not add articles.
+- If conclusion says "unaware", represent as predicate "aware" with polarity false.
+- If conclusion says "doesn't have", represent as predicate "have" with polarity false.
+- Do not invent content not present in the conclusion.
+
+Conclusion:
+{{CONCLUSION}}

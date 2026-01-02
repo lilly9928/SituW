@@ -10,6 +10,12 @@ import re
 import sys
 import time
 from nltk.tokenize import sent_tokenize
+from utils.gpt_pricing import get_text_prices_per_1m
+
+try:
+    import tiktoken
+except Exception:
+    tiktoken = None
 
 class GPT3_Reasoning_Graph_Baseline:
     def __init__(self, args):
@@ -22,6 +28,16 @@ class GPT3_Reasoning_Graph_Baseline:
         self.mode = args.mode
         self.openai_api = OpenAIModel(args.api_key, args.model_name, args.stop_words, args.max_new_tokens)
 
+        self.stats = {
+            "total_api_time": 0.0,
+            "batch_calls": 0,
+            "single_calls": 0,
+            "num_prompts": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0
+        }
+
         self.prompt = {
             'time':       'Extract the time: When does this occur? Reply with a short phrase or None.',
             'location':   'Extract the location: Where does this occur? Reply with a short phrase or None.',
@@ -30,6 +46,39 @@ class GPT3_Reasoning_Graph_Baseline:
             'protagonist':'Extract the protagonist: Who is involved? Reply with a short phrase or None.'
         }
 
+    def _count_tokens(self, text):
+        if text is None:
+            return 0
+        text = str(text)
+        if tiktoken is None:
+            v = len(text) // 4
+            return v if v > 0 else 1
+        try:
+            enc = tiktoken.encoding_for_model(self.model_name)
+        except Exception:
+            enc = tiktoken.get_encoding("cl100k_base")
+        return len(enc.encode(text))
+
+    def _update_batch_stats(self, prompts, outputs, elapsed):
+        self.stats["total_api_time"] += float(elapsed)
+        self.stats["batch_calls"] += 1
+        self.stats["num_prompts"] += len(prompts)
+        for p, o in zip(prompts, outputs):
+            pt = self._count_tokens(p)
+            ct = self._count_tokens(o)
+            self.stats["prompt_tokens"] += pt
+            self.stats["completion_tokens"] += ct
+            self.stats["total_tokens"] += (pt + ct)
+
+    def _update_single_stats(self, prompt, output, elapsed):
+        self.stats["total_api_time"] += float(elapsed)
+        self.stats["single_calls"] += 1
+        self.stats["num_prompts"] += 1
+        pt = self._count_tokens(prompt)
+        ct = self._count_tokens(output)
+        self.stats["prompt_tokens"] += pt
+        self.stats["completion_tokens"] += ct
+        self.stats["total_tokens"] += (pt + ct)
 
     def load_raw_dataset(self, split):
         if 'd' in self.dataset_name: 
@@ -52,10 +101,8 @@ class GPT3_Reasoning_Graph_Baseline:
         )
 
     def batch_reasoning_graph_generation(self, batch_size=10):
-        # load raw dataset
         memory_bank = {}
         raw_dataset = self.load_raw_dataset(self.split)
-        breakpoint()
         
         seen = set()
         sentence_items = []
@@ -69,22 +116,24 @@ class GPT3_Reasoning_Graph_Baseline:
                 sentence_items.append({'parent_id': pid, 'premises': sent})
 
         print(f"Loaded {len(raw_dataset)} examples from {self.split} split.")
-        breakpoint()
-        # split dataset into chunks
         dataset_chunks = [sentence_items[i:i + batch_size] for i in range(0, len(sentence_items), batch_size)]
         for chunk in tqdm(dataset_chunks):
-            breakpoint()
             try:
-                start_time = time.time()
-                # import pdb;pdb.set_trace()
-                batch_time = self.openai_api.batch_generate([f"{example['premises']} {self.prompt['time']}" for example in chunk])
-                breakpoint()
-                batch_location = self.openai_api.batch_generate([
-                    f"{example['premises']} {self.prompt['location']}" for example in chunk
-                ])
-                batch_protagonist = self.openai_api.batch_generate([
-                    f"{example['premises']} {self.prompt['protagonist']}" for example in chunk
-                ])
+                prompts_time = [f"{example['premises']} {self.prompt['time']}" for example in chunk]
+                t0 = time.time()
+                batch_time = self.openai_api.batch_generate(prompts_time)
+                # breakpoint()
+                self._update_batch_stats(prompts_time, batch_time, time.time() - t0)
+
+                prompts_location = [f"{example['premises']} {self.prompt['location']}" for example in chunk]
+                t0 = time.time()
+                batch_location = self.openai_api.batch_generate(prompts_location)
+                self._update_batch_stats(prompts_location, batch_location, time.time() - t0)
+
+                prompts_protagonist = [f"{example['premises']} {self.prompt['protagonist']}" for example in chunk]
+                t0 = time.time()
+                batch_protagonist = self.openai_api.batch_generate(prompts_protagonist)
+                self._update_batch_stats(prompts_protagonist, batch_protagonist, time.time() - t0)
 
                 for i, example in enumerate(chunk):
                     pid = example['parent_id']
@@ -98,70 +147,123 @@ class GPT3_Reasoning_Graph_Baseline:
                     memory_bank[pid]['location'].add(batch_location[i])
                     memory_bank[pid]['protagonist'].add(batch_protagonist[i])
 
-                batch_cause = self.openai_api.batch_generate([
+                prompts_cause = [
                     f"{example['premises']} {self.format_memory(memory_bank[example['parent_id']])} {self.prompt['cause']}"
                     for example in chunk
-                ])
-                batch_intention = self.openai_api.batch_generate([
+                ]
+                t0 = time.time()
+                batch_cause = self.openai_api.batch_generate(prompts_cause)
+                self._update_batch_stats(prompts_cause, batch_cause, time.time() - t0)
+
+                prompts_intention = [
                     f"{example['premises']} {self.format_memory(memory_bank[example['parent_id']])} {self.prompt['intention']}"
                     for example in chunk
-                ])
+                ]
+                t0 = time.time()
+                batch_intention = self.openai_api.batch_generate(prompts_intention)
+                self._update_batch_stats(prompts_intention, batch_intention, time.time() - t0)
 
                 for i, example in enumerate(chunk):
                     pid = example['parent_id']
                     memory_bank[pid]['cause'].add(batch_cause[i])
                     memory_bank[pid]['intention'].add(batch_intention[i])
 
-                # break
-
             except Exception as e:
                 print("Error in batch generation: ", e)
                 for sample in chunk:
                     try:
                         pid = sample['parent_id']
-                        start_time = time.time()
+                        if pid not in memory_bank:
+                            memory_bank[pid] = {'time':set(),
+                                                'location':set(),
+                                                'protagonist':set(),
+                                                'cause':set(),
+                                                'intention':set()}
 
-                        # 개별 추론 처리
                         prompt_time = f"{sample['premises']} {self.prompt['time']}"
+                        t0 = time.time()
                         time_r, _ = self.openai_api.generate(prompt_time)
-                        breakpoint()
+                        self._update_single_stats(prompt_time, time_r, time.time() - t0)
 
                         prompt_location = f"{sample['premises'] } {self.prompt['location']}"
+                        t0 = time.time()
                         location_r, _ = self.openai_api.generate(prompt_location)
+                        self._update_single_stats(prompt_location, location_r, time.time() - t0)
 
                         prompt_protagonist = f"{sample['premises'] } {self.prompt['protagonist']}"
+                        t0 = time.time()
                         protagonist_r, _ = self.openai_api.generate(prompt_protagonist)
+                        self._update_single_stats(prompt_protagonist, protagonist_r, time.time() - t0)
                         
                         memory_bank[pid]['time'].add(time_r)
                         memory_bank[pid]['location'].add(location_r)
                         memory_bank[pid]['protagonist'].add(protagonist_r)
 
                         prompt_cause = f"{sample['premises']} {self.format_memory(memory_bank[pid])} {self.prompt['cause']}"
+                        t0 = time.time()
                         cause_r, _ = self.openai_api.generate(prompt_cause)
+                        self._update_single_stats(prompt_cause, cause_r, time.time() - t0)
 
                         prompt_intention = f"{sample['premises']} {self.format_memory(memory_bank[pid])} {self.prompt['intention']}"
+                        t0 = time.time()
                         intention_r, _ = self.openai_api.generate(prompt_intention)
+                        self._update_single_stats(prompt_intention, intention_r, time.time() - t0)
 
                         memory_bank[pid]['cause'].add(cause_r)
                         memory_bank[pid]['intention'].add(intention_r)
-                        
-                        # break
 
                     except Exception as inner_e:
                         print('Error in generating example:', sample.get('parent_id', 'N/A'), inner_e)
-
-
-   
-        # 최종 저장 - parent_id 기준 memory만 저장
+            
         final_memory_outputs = [
         {
             'id': pid,
             'memory': {
-                k: list(v) for k, v in memory.items()  # <- set을 list로 변환
+                k: list(v) for k, v in memory.items()
             }
         }
         for pid, memory in memory_bank.items()
         ]
+
+        n_prompts = self.stats["num_prompts"] if self.stats["num_prompts"] > 0 else 1
+        avg_time = self.stats["total_api_time"] / n_prompts
+        avg_total_tokens = self.stats["total_tokens"] / n_prompts
+        avg_prompt_tokens = self.stats["prompt_tokens"] / n_prompts
+        avg_completion_tokens = self.stats["completion_tokens"] / n_prompts
+
+        price = get_text_prices_per_1m(self.model_name, tier="standard")
+        if price["input_per_1m"] is None or price["output_per_1m"] is None:
+            input_cost = None
+            output_cost = None
+            total_cost = None
+        else:
+            input_cost = (self.stats["prompt_tokens"] / 1000000.0) * float(price["input_per_1m"])
+            output_cost = (self.stats["completion_tokens"] / 1000000.0) * float(price["output_per_1m"])
+            total_cost = input_cost + output_cost
+
+        meta = {
+            "avg_time_per_prompt_sec": avg_time,
+            "avg_total_tokens_per_prompt": avg_total_tokens,
+            "avg_prompt_tokens_per_prompt": avg_prompt_tokens,
+            "avg_completion_tokens_per_prompt": avg_completion_tokens,
+            "total_api_time_sec": self.stats["total_api_time"],
+            "total_prompt_tokens": self.stats["prompt_tokens"],
+            "total_completion_tokens": self.stats["completion_tokens"],
+            "total_tokens": self.stats["total_tokens"],
+            "batch_calls": self.stats["batch_calls"],
+            "single_calls": self.stats["single_calls"],
+            "num_prompts": self.stats["num_prompts"],
+            "pricing_tier": price["tier"],
+            "pricing_matched_key": price["matched"],
+            "price_input_per_1m": price["input_per_1m"],
+            "price_output_per_1m": price["output_per_1m"],
+            "estimated_input_cost_usd": input_cost,
+            "estimated_output_cost_usd": output_cost,
+            "estimated_total_cost_usd": total_cost
+        }
+
+        final_memory_outputs.append({"id": "__meta__", "meta": meta})
+
         save_file = os.path.join(
             self.save_path,
             f'{self.mode}_{self.dataset_name}_{self.split}_{self.model_name}_memory_only.json'
@@ -173,12 +275,10 @@ class GPT3_Reasoning_Graph_Baseline:
 
         
     def update_answer(self,sample, reading, reasoning, time_cost):
-        # import pdb;pdb.set_trace()
         final_answer = self.post_process_c(reasoning)
         final_choice = self.final_process_logiqa(final_answer)
 
         if self.dataset_name=='logiqa':
-            # sample = json.loads(sample)
             dict_output = {'id': sample['id'],
                     'questtion': sample['hypothesis'],
                     'original_context': sample['premise'],
@@ -220,5 +320,4 @@ def parse_args():
 if __name__ == '__main__':
     args = parse_args()
     gpt3_problem_reduction = GPT3_Reasoning_Graph_Baseline(args)
-    # gpt3_problem_reduction.reasoning_graph_generation()
     gpt3_problem_reduction.batch_reasoning_graph_generation(batch_size=10)

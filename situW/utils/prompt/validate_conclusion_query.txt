@@ -1,0 +1,11 @@
+You will be given a conclusion and a proposed JSON.
+
+Output JSON ONLY in the same schema.
+Remove anything not supported by the conclusion.
+Do not add new content.
+
+Conclusion:
+{{CONCLUSION}}
+
+Proposed JSON:
+{{JSON}}

@@ -20,15 +20,15 @@ fi
 # -----------------------
 
 model_name="gpt-5-mini"
-data_path="/data3/KJE/code/WIL_DeepLearningProject_2/SituationMemory/data/ThinkAgent/FOLIO"
-dataset_name="FOLIO" #FOLIO / LogicalDeduction / AR-LSAT /logiqa
-mode="Ours_060101"
+data_path="/data3/KJE/code/WIL_DeepLearningProject_2/SituationMemory/data/ThinkAgent/LogiQA2.0"
+dataset_name="LogiQA2.0" #FOLIO / LogicalDeduction / AR-LSAT /logiqa
+mode="Ours_CoT"
 split="train"
 
 echo "$dataset_name"
 echo "$model_name"
 
-python src/extract_situation.py \
+python src/extract_situation_260101.py \
   --api_key "$api_key" --model_name "$model_name" \
   --data_path "$data_path" --dataset_name "$dataset_name" \
   --split "$split" --mode "$mode"

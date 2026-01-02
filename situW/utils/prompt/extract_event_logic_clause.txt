@@ -1,0 +1,96 @@
+You will be given ONE clause/premise from a logic problem.
+
+Task:
+Produce a "current situation model" for this clause as JSON, including:
+(1) an EVENT representation indexed by five dimensions:
+    time, location, cause, intention, protagonist
+(2) entities mentioned (canonicalized)
+(3) logical content as graph-ready assertions:
+    atomic facts and/or implication rules
+(4) disjunction handling as multiple alternatives (branching current models)
+
+Hard rules:
+1) Output JSON ONLY. No extra text.
+2) Do NOT invent facts. Every evidence string must be an exact substring of the clause.
+3) If the clause contains disjunction (or / either ... or), represent it as multiple alternatives.
+   - If it explicitly allows "or both", include an alternative for (A AND B).
+4) Use short canonical strings. Normalize by lowercasing and collapsing spaces only.
+5) Facts are atomic: subject + predicate (+ optional object) with polarity true/false.
+6) Rules are explicit conditionals/quantified constraints: antecedent facts -> consequent facts.
+7) If a five-dimension value is not explicitly present, set it to null (do not guess).
+
+JSON schema:
+
+{
+  "event": {
+    "time": "short phrase or null",
+    "location": "short phrase or null",
+    "cause": "short phrase or null",
+    "intention": "short phrase or null",
+    "protagonist": ["canonical entity strings..."],
+    "evidence": {
+      "time": "exact substring or null",
+      "location": "exact substring or null",
+      "cause": "exact substring or null",
+      "intention": "exact substring or null",
+      "protagonist": "exact substring or null"
+    }
+  },
+  "entities": [
+    {
+      "surface": "string from clause",
+      "canonical": "normalized form",
+      "kind": "person|group|substance|abstract|variable|unknown",
+      "evidence": "exact substring from clause"
+    }
+  ],
+  "alternatives": [
+    [
+      {
+        "type": "fact",
+        "subject": "canonical entity or variable",
+        "predicate": "short predicate",
+        "object": "optional canonical object or null",
+        "polarity": true,
+        "quantifier": "all|some|none|unknown",
+        "modality": "necessary|possible|unknown",
+        "evidence": "exact substring from clause",
+        "confidence": 0.0
+      },
+      {
+        "type": "rule",
+        "antecedent": [
+          {
+            "subject": "string",
+            "predicate": "string",
+            "object": "string or null",
+            "polarity": true
+          }
+        ],
+        "consequent": [
+          {
+            "subject": "string",
+            "predicate": "string",
+            "object": "string or null",
+            "polarity": true
+          }
+        ],
+        "evidence": "exact substring from clause",
+        "confidence": 0.0
+      }
+    ]
+  ],
+  "confidence": 0.0
+}
+
+Guidance:
+- "All X are Y" => rule: (x has_property X) -> (x has_property Y) OR use predicate forms directly; keep consistent.
+- "No one who P is Q" => rule: P -> not Q (polarity false in consequent fact).
+- "A or B" => alternatives: [A], [B]. If "or both", also [A and B].
+- "either A or B" => alternatives: [A], [B] only.
+- "aware/unaware that <content>" => predicate "aware" with object "<content>" and polarity true/false.
+- For protagonist, list the concrete named individuals if present (e.g., "rina"). If none, empty list.
+- time/location are often null in logic clauses; do not guess.
+
+Clause:
+{{CLAUSE}}
