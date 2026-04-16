@@ -1,7 +1,5 @@
 # SituW
-# README (Quick)
-
-Minimal guide to run **Chain-of-Thought (CoT)** NLI experiments on **LogiQA2.0 → QA2NLI** (and related logical reasoning datasets).
+# README (We will update soon!)
 
 ---
 
