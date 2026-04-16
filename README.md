@@ -1,6 +1,6 @@
 # SituW
 # README (We will update soon!)
-
+This is past readme :(  We will update soon! :)
 ---
 
 ## 1) Environment
